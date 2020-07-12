@@ -1,12 +1,14 @@
 import card
 import random
+import numpy as np
 
 
 class Deck(object):
     def __init__(self):
         self.remaining = 52
-        self.cards = [card.Card(suit, val) for val in range(1, 14)
-                      for suit in card.Suit]
+        self.cards = np.array(
+            [card.Card(suit, val) for val in range(1, 14)
+             for suit in card.Suit], dtype=object)
 
     def draw_card_at_idx(self, idx):
         # check if last card
@@ -56,7 +58,7 @@ class Deck(object):
         return value_count
     
     def get_remaining_cards(self):
-        return [self.cards[idx] for idx in range(self.remaining)]
+        return self.cards[:self.remaining]
 
     def has_card(self, this_card):
         for idx in range(self.remaining):

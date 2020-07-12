@@ -166,10 +166,10 @@ def convert_value_to_rank(value):
 
 class Hand(object):
     def __init__(self, cards):
-        for c in cards:
-            assert (c.value < 14)
-            assert (c.value != 0)
-            assert (int(c.suit) < 4)
+        # for c in cards:
+            # assert (c.value < 14)
+            # assert (c.value != 0)
+            # assert (int(c.suit) < 4)
         self.cards = sorted(cards)
         self.rank = 0
         self.tie_breakers = []

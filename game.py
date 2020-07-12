@@ -1,10 +1,10 @@
 from card import Card, Suit
 from hand import Hand, Result
-import deck
 import enum
 import copy
 import line_profiler
 import atexit
+import numpy as np
 
 profile = line_profiler.LineProfiler()
 atexit.register(profile.print_stats)
@@ -20,23 +20,25 @@ class GameState(enum.IntEnum):
 
 @profile
 def choose_n_cards_from_options(n, card_options):
-    card_vectors = []
     if n == 1:
         for c in card_options:
-            card_vectors.append([c])
+            def gen():
+                yield c
+            yield gen
     else:
         prev_result = choose_n_cards_from_options(n - 1, card_options)
         for r in prev_result:
             for c in card_options:
                 not_duplicate = True
-                for existing_card in r:
+                for existing_card in r():
                     if c == existing_card:
                         not_duplicate = False
                 if not_duplicate:
-                    res = copy.deepcopy(r)
-                    res.append(c)
-                    card_vectors.append(res)
-    return card_vectors
+                    def gen():
+                        for c1 in r():
+                            yield c1
+                        yield c
+                    yield gen
 
 
 class Game(object):
@@ -111,7 +113,11 @@ class Game(object):
         for board_cards in choose_n_cards_from_options(num_from_board,
                                                        self.board):
             for pocket_cards in choose_n_cards_from_options(num_from_pocket, pocket):
-                hand_list = board_cards + pocket_cards
+                hand_list = []
+                for c in board_cards():
+                    hand_list.append(c)
+                for c in pocket_cards():
+                    hand_list.append(c)
                 set_to_build.add(Hand(hand_list))
     
     @profile
