@@ -1,13 +1,8 @@
 from card import Card, Suit
 from hand import Hand, Result
+from deck import Deck
+import pdb
 import enum
-import copy
-import line_profiler
-import atexit
-import numpy as np
-
-profile = line_profiler.LineProfiler()
-atexit.register(profile.print_stats)
 
 
 class GameState(enum.IntEnum):
@@ -18,27 +13,24 @@ class GameState(enum.IntEnum):
     PostRiver = 4
 
 
-@profile
 def choose_n_cards_from_options(n, card_options):
     if n == 1:
         for c in card_options:
-            def gen():
-                yield c
-            yield gen
+            yield [c]
     else:
         prev_result = choose_n_cards_from_options(n - 1, card_options)
         for r in prev_result:
             for c in card_options:
                 not_duplicate = True
-                for existing_card in r():
-                    if c == existing_card:
+                cards = []
+                for existing_card in r:
+                    if c is existing_card:
                         not_duplicate = False
+                        break
+                    cards.append(existing_card)
                 if not_duplicate:
-                    def gen():
-                        for c1 in r():
-                            yield c1
-                        yield c
-                    yield gen
+                    cards.append(c)
+                    yield cards
 
 
 class Game(object):
@@ -51,7 +43,7 @@ class Game(object):
         # list of hands
         self.player_hands = set()
         self.board = []
-        self.opponent_pockets = [[]]
+        self.opponent_pockets = []
         # list of hands
         self.opponent_hands = set()
 
@@ -105,22 +97,21 @@ class Game(object):
             self.board.append(self.deck.draw_random_card())
         if int(self.state) < 4:
             self.board.append(self.deck.draw_random_card())
+        for _ in range(self.opponents):
+            self.opponent_pockets.append([
+                                         self.deck.draw_random_card(),
+                                         self.deck.draw_random_card()
+                                         ])
         self.state = GameState.PostRiver
 
-    @profile
     def build_hands(self, pocket, set_to_build,
                     num_from_pocket, num_from_board):
         for board_cards in choose_n_cards_from_options(num_from_board,
                                                        self.board):
             for pocket_cards in choose_n_cards_from_options(num_from_pocket, pocket):
-                hand_list = []
-                for c in board_cards():
-                    hand_list.append(c)
-                for c in pocket_cards():
-                    hand_list.append(c)
+                hand_list = board_cards + pocket_cards
                 set_to_build.add(Hand(hand_list))
-    
-    @profile
+
     def set_player_hands(self):
         # 2 from pocket, 3 from board:
         self.build_hands(self.player_pocket, self.player_hands, 2, 3)
@@ -128,7 +119,7 @@ class Game(object):
         self.build_hands(self.player_pocket, self.player_hands, 1, 4)
         # 5 from board
         self.player_hands.add(Hand(self.board))
-    
+
     def set_opponent_hands(self):
         for opp_pocket in self.opponent_pockets:
             # 2 from pocket, 3 from board:
@@ -137,7 +128,7 @@ class Game(object):
             self.build_hands(opp_pocket, self.opponent_hands, 1, 4)
         # 5 from board
         self.opponent_hands.add(Hand(self.board))
-    
+
     def set_all_hands(self):
         self.set_player_hands()
         self.set_opponent_hands()
@@ -187,13 +178,12 @@ class Game(object):
     def run(self):
         if self.state != GameState.PostRiver:
             self.simulate_to_river()
-        for _ in range(self.opponents):
-            self.opponent_pockets.append([
-                self.deck.draw_random_card(),
-                self.deck.draw_random_card()
-            ])
         self.set_all_hands()
         self.set_all_ranks()
         best_player_hand = self.get_best_player_hand()
         best_opponent_hand = self.get_best_opponent_hand()
-        return best_player_hand.compare_with(best_opponent_hand)
+        result = best_player_hand.compare_with(best_opponent_hand)
+        new_f = open('/home/anna/code/poker_python/output.txt', 'a+')
+        new_f.write(str(best_player_hand) + " vs \n" + str(best_opponent_hand) + "\n" + str(result))
+        new_f.close()
+        return result

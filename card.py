@@ -9,7 +9,14 @@ class Suit(enum.IntEnum):
     Spade = 3
 
 
-class Card(object):
+CARDS = np.empty(52, dtype=object)
+
+
+def Card(suit, value):
+    return CARDS[int(suit) * 13 + value - 1]
+
+
+class CardInternal(object):
     __slots__ = ('suit', 'value')
 
     def __init__(self, suit, value):
@@ -20,10 +27,10 @@ class Card(object):
         return hash((self.suit, self.value))
 
     def __eq__(self, other):
-        return self.suit == other.suit and self.value == other.value
+        return self is other
 
     def __ne__(self, other):
-        return not (self == other)
+        return self is not other
 
     def __lt__(self, other):
         if self.value != other.value:
@@ -60,6 +67,14 @@ class Card(object):
 
     def __str__(self):
         return self.value_to_string() + " " + self.suit_to_string()
+
+    def __repr__(self):
+        return self.value_to_string() + " " + self.suit_to_string()
+
+
+for s in (Suit.Diamond, Suit.Heart, Suit.Spade, Suit.Club):
+    for i in range(1, 14):
+        CARDS[s * 13 + i - 1] = CardInternal(s, i)
 
 
 class Pocket(object):

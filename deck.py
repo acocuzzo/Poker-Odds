@@ -1,6 +1,7 @@
 import card
 import random
 import numpy as np
+from collections import defaultdict
 
 
 class Deck(object):
@@ -25,7 +26,7 @@ class Deck(object):
     
     def draw_card(self, this_card):
         for idx in range(self.remaining):
-            if self.cards[idx] == this_card:
+            if self.cards[idx] is this_card:
                 return self.draw_card_at_idx(idx)
         return None
     
@@ -40,28 +41,12 @@ class Deck(object):
             if self.cards[idx].value == this_value:
                 return self.draw_card_at_idx(idx)
         return None
-     
-    def suit_count(self, this_suit):
-        suit_count = 0
-        while suit_count < 14:
-            for idx in range(self.remaining):
-                if self.cards[idx].suit == this_suit:
-                    suit_count += 1
-        return suit_count
-
-    def value_count(self, this_value):
-        value_count = 0
-        while value_count < 5:
-            for idx in range(self.remaining):
-                if self.cards[idx].suit == this_value:
-                    value_count += 1
-        return value_count
     
     def get_remaining_cards(self):
         return self.cards[:self.remaining]
 
     def has_card(self, this_card):
-        for idx in range(self.remaining):
-            if self.cards[idx] == this_card:
-                return True
-        return False
+        return this_card in self.cards[:self.remaining]
+    
+    def clear(self):
+        self.remaining = 52

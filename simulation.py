@@ -1,70 +1,70 @@
 from game import Game
 from deck import Deck
-from card import Card, Suit, PreFlop_Test_Pocket
+from card import Card, Suit
+from hand import Result, Hand, check_is_straight
 
 
-def generate_all_pockets(full_deck):
-    all_possible_pockets = set()
-    for card_a in full_deck:
-        for card_b in full_deck:
-            if card_a != card_b:
-                all_possible_pockets.add(PreFlop_Test_Pocket([card_a, card_b]))
-    return all_possible_pockets
-
-
-def generate_half_pockets():
-    card_options = []
-    for val in range(1, 14):
-        card_options.append(Card(Suit.Diamond, val))
-        card_options.append(Card(Suit.Heart, val))
-    return generate_all_pockets(card_options)
-
-
-def generate_pair_pockets():
-    all_possible_pockets = set()
-    for val in range(1, 14):
-        all_possible_pockets.add(
-            PreFlop_Test_Pocket(
-                [Card(Suit.Diamond, val),
-                 Card(Suit.Heart, val)]))
-    return all_possible_pockets
-
+def generate_all_pockets():
+    for val1 in range(13, 0, -1):
+        for val2 in range(1, val1 + 1):
+            if val1 != val2:
+                yield [Card(Suit.Heart, val1), Card(Suit.Heart, val2)]
+            yield [Card(Suit.Heart, val1), Card(Suit.Diamond, val2)]
+    
 
 def get_odds_dict(num_simulations, player_pocket, board, num_players):
-    results = [0, 0, 0]
+    results = [0., 0., 0.]
+    board_odds_by_rank = [0.] * 11
+    same_pocket = 0
+    share_one_card = 0
+    using_board_hand = 0
+    tie_count = 0
+    delta = 1. / num_simulations
     full_deck = Deck()
     for _ in range(num_simulations):
         simulation = Game(num_players - 1, full_deck)
         simulation.set_player_pocket(player_pocket[0], player_pocket[1])
         simulation.set_board(board)
-        results[int(simulation.run())] += 1
+        res = simulation.run()
+        # DEBUGGING ONLY:
+        board_hand = Hand(simulation.board)
+        board_hand.set_rank()
+        if board_hand.rank < 10:
+            board_odds_by_rank[board_hand.rank] += delta
+        else:
+            board_odds_by_rank[10] += delta
+        if res == Result.Tie:
+            tie_count += 1
+            if simulation.get_best_opponent_hand() == board_hand and simulation.get_best_player_hand() == board_hand:
+                using_board_hand += 1
+            opp_pocket = simulation.opponent_pockets[0]
+            if (player_pocket[0].value == opp_pocket[0].value or player_pocket[0].value == opp_pocket[1].value) and (player_pocket[1].value == opp_pocket[0].value or player_pocket[1].value == opp_pocket[1].value):
+                same_pocket += 1
+            if player_pocket[0].value == opp_pocket[0].value or player_pocket[0].value == opp_pocket[1].value:
+                share_one_card += 1
+        results[int(res)] += delta
         full_deck.remaining = 52
-    return [float(res) / float(num_simulations) for res in results]
+    print(board_odds_by_rank)
+    print(tie_count)
+    print(float(using_board_hand)/tie_count)
+    print(float(same_pocket)/tie_count)
+    print(float(share_one_card)/tie_count)
+    return results
 
 
 def generate_all_preflop_odds(num_simulations, num_players):
-    preflop_odds = {}
-    for player_pocket in generate_half_pockets():
-        preflop_odds[player_pocket] = get_odds_dict(num_simulations,
-                                                    player_pocket.cards, [],
-                                                    num_players)
-        print(player_pocket)
-        print(preflop_odds[player_pocket])
-    return preflop_odds
-
-
-def generate_preflop_odds_all_pairs(num_simulations, num_players):
-    preflop_odds = {}
-    for player_pocket in generate_pair_pockets():
-        preflop_odds[player_pocket] = get_odds_dict(num_simulations,
-                                                    player_pocket.cards, [],
-                                                    num_players)
-        print(player_pocket)
-        print(preflop_odds[player_pocket])
-    return preflop_odds
+    output_file = open(
+        '/home/anna/code/poker_python/preflop_results_trial6.txt', 'a+')
+    for player_pocket in generate_all_pockets():
+        odds_dict = get_odds_dict(num_simulations, player_pocket, [],
+                                  num_players)
+        output_file.write((','.join(
+            map(str, [
+                player_pocket[1], player_pocket[0], odds_dict[0], odds_dict[2],
+                odds_dict[1]
+            ]))) + "\n")
+    output_file.close()
 
 
 def main():
-    player_pocket = [Card(Suit.Diamond, 13), Card(Suit.Heart, 13)]
-    odds_dict = get_odds_dict(1000, player_pocket, [], 2)
-    return odds_dict
+    generate_all_preflop_odds(10000, 2)
